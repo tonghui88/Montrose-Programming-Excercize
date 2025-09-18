@@ -17,10 +17,10 @@
             return _recipes.Select(r => new RecipeSummary { Id = r.Id, Name = r.Name }).ToList();
         }
 
-        public static object GetRecipe(int id)
+        public static RecipeDetails GetRecipe(int id)
         {
             // TODO: get the recipe by id
-            throw new NotImplementedException();
+            return _recipes.FirstOrDefault(r => r.Id == id);
         }
     }
 }
