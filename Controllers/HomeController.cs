@@ -17,7 +17,8 @@ namespace MyRecipes.Controllers
         public IActionResult Index()
         {
             // TODO: send the recipe summaries so they can be selected from
-            return View();
+            var model = new HomePageModel();
+            return View(model);
         }
 
         public IActionResult Privacy()

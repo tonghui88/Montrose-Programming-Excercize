@@ -9,21 +9,67 @@
     <p>Select a recipe to get the full recipe write up.</p>
 
     @*TODO: Add a dropdown to select a recipe*@
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="form-group">
+                <select id="recipeDropdown" class="form-select" onchange="handleRecipeSelection()">
+                    <option value="">-- Choose a Recipe --</option>
+                    @foreach (var recipe in Model.Recipes)
+                    {
+                        <option value="@recipe.Id">@recipe.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
     @*TODO: Load the recipe when the user selects one*@
     @*TODO: An area to display the recipe with some miminal styling*@
+    <div id="recipeDisplay" class="mt-4" style="display: none;">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 id="recipeName" class="card-title mb-0"></h3>
+                    </div>
+                    <div class="card-body">
+                        <p id="recipeContent" class="card-text"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
 </div>
 
 <script>
     async function handleRecipeSelection(){
         var dropdown = document.getElementById("recipeDropdown");
+        console.log(dropdown.selectedIndex)
         var selectedRecipeId = dropdown.options[dropdown.selectedIndex].value;
+        var recipeDisplay = document.getElementById("recipeDisplay");
+
+        if (!selectedRecipeId) {
+            recipeDisplay.style.display = "none";
+            return;
+        }
 
         try {
             const response = await fetch(`/api/recipe/${selectedRecipeId}`);
-            // TODO: Get the response data and dsiplay it on the screen
+            if (response.ok) {
+                const recipe = await response.json();
+                
+                // TODO: Get the response data and dsiplay it on the screen
+                document.getElementById("recipeName").textContent = recipe.name;
+                document.getElementById("recipeContent").textContent = recipe.recipe;
+                recipeDisplay.style.display = "block";
+            } else {
+                console.error("Failed to fetch recipe details");
+                recipeDisplay.style.display = "none";
+            }
         } catch (error) {
             console.error("An error occurred while fetching recipe details:", error);
+            recipeDisplay.style.display = "none";
         }
     }
 </script>
