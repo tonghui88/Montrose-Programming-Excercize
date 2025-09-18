@@ -1,0 +1,29 @@
+﻿@model HomePageModel
+
+@{
+    ViewData["Title"] = "My Recipes";
+}
+
+<div class="text-center">
+    <h1 class="display-4">My Recipes</h1>
+    <p>Select a recipe to get the full recipe write up.</p>
+
+    @*TODO: Add a dropdown to select a recipe*@
+    @*TODO: Load the recipe when the user selects one*@
+    @*TODO: An area to display the recipe with some miminal styling*@
+    
+</div>
+
+<script>
+    async function handleRecipeSelection(){
+        var dropdown = document.getElementById("recipeDropdown");
+        var selectedRecipeId = dropdown.options[dropdown.selectedIndex].value;
+
+        try {
+            const response = await fetch(`/api/recipe/${selectedRecipeId}`);
+            // TODO: Get the response data and dsiplay it on the screen
+        } catch (error) {
+            console.error("An error occurred while fetching recipe details:", error);
+        }
+    }
+</script>
