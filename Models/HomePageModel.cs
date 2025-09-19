@@ -9,7 +9,7 @@ namespace MyRecipes.Models
 
         public HomePageModel()
         {
-            Recipes = new List<RecipeSummary>();
+            Recipes = AllRecipes.GetRecipeSummaries();
         }
 
         public HomePageModel(IRecipeService recipeService)
