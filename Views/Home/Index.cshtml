@@ -222,7 +222,7 @@
         setupDeleteConfirmationListener() {
             document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
                 if (this.currentRecipeId) {
-                    this.deleteRecipeById(this.currentRecipeId);
+                    this.submitDeleteForm();
                 }
             });
         }
@@ -384,7 +384,10 @@
         }
 
         openDeleteModal() {
-            if (!this.currentRecipeId) return;
+            if (!this.currentRecipeId) {
+                console.error('No recipe selected for deletion');
+                return;
+            }
             
             const recipeName = document.getElementById("recipeName").textContent;
             document.getElementById("recipeToDeleteName").textContent = recipeName;
@@ -448,13 +451,19 @@
         }
 
         async submitDeleteForm() {
+            if (!this.currentRecipeId) {
+                console.error('No recipe selected for deletion');
+                return;
+            }
+
             const buttonConfig = this.getButtonConfig('deleteConfirmModal');
             this.setLoadingState(buttonConfig, true, 'Deleting...');
 
             try {
                 await this.deleteRecipe(this.currentRecipeId);
                 this.closeModal('deleteConfirmModal');
-            } catch (error) {
+        } catch (error) {
+                console.error('Delete error:', error);
                 this.showErrorToast(error.message);
             } finally {
                 this.setLoadingState(buttonConfig, false, 'Delete Recipe');
