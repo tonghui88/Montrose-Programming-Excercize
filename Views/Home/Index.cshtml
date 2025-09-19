@@ -109,6 +109,39 @@
         </div>
     </div>
 
+    <!-- Edit Recipe Modal -->
+    <div class="modal fade" id="editRecipeModal" tabindex="-1" aria-labelledby="editRecipeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editRecipeModalLabel">Edit Recipe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editRecipeModalForm">
+                        <div class="mb-3">
+                            <label for="editRecipeNameInput" class="form-label">Recipe Name *</label>
+                            <input type="text" class="form-control" id="editRecipeNameInput" required>
+                            <div class="invalid-feedback" id="editNameError"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editRecipeContentInput" class="form-label">Recipe Instructions *</label>
+                            <textarea class="form-control" id="editRecipeContentInput" rows="6" required></textarea>
+                            <div class="invalid-feedback" id="editContentError"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitEditModalForm()">
+                        <span class="spinner-border spinner-border-sm d-none" id="editSpinner"></span>
+                        <span id="editButtonText">Update Recipe</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
         <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -118,7 +151,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
             <div class="toast-body" id="successToastBody">
-                Recipe deleted successfully!
+                Recipe updated successfully!
             </div>
         </div>
         <div id="errorToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -128,7 +161,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
             <div class="toast-body" id="errorToastBody">
-                Error deleting recipe. Please try again.
+                Error updating recipe. Please try again.
             </div>
         </div>
     </div>
@@ -136,283 +169,440 @@
 </div>
 
 <script>
-    let currentRecipeId = null;
-
-    async function handleRecipeSelection(){
-        var dropdown = document.getElementById("recipeDropdown");
-        var selectedRecipeId = dropdown.options[dropdown.selectedIndex].value;
-        var recipeDisplay = document.getElementById("recipeDisplay");
-
-        if (!selectedRecipeId) {
-            recipeDisplay.style.display = "none";
-            currentRecipeId = null;
-            return;
+    // =============================================================================
+    // RECIPE MANAGER - Optimized and Refactored
+    // =============================================================================
+    
+    class RecipeManager {
+        constructor() {
+            this.currentRecipeId = null;
+            this.apiBaseUrl = '/api/recipe';
+            this.init();
         }
 
-        try {
-            const response = await fetch(`/api/recipe/${selectedRecipeId}`);
-            if (response.ok) {
-                const recipe = await response.json();
-                
-                // TODO: Get the response data and dsiplay it on the screen
-                document.getElementById("recipeName").textContent = recipe.name;
-                document.getElementById("recipeContent").textContent = recipe.recipe;
-                recipeDisplay.style.display = "block";
-                currentRecipeId = recipe.id;
-            } else {
-                console.error("Failed to fetch recipe details");
-                recipeDisplay.style.display = "none";
-                currentRecipeId = null;
-            }
-        } catch (error) {
-            console.error("An error occurred while fetching recipe details:", error);
-            recipeDisplay.style.display = "none";
-            currentRecipeId = null;
+        init() {
+            this.setupEventListeners();
         }
-    }
 
-
-    // Edit Recipe Function
-    function editRecipe() {
-        if (!currentRecipeId) return;
+        // =============================================================================
+        // EVENT LISTENERS
+        // =============================================================================
         
-        const newName = prompt("Enter new recipe name:", document.getElementById("recipeName").textContent);
-        const newRecipe = prompt("Enter new recipe instructions:", document.getElementById("recipeContent").textContent);
-        
-        if (newName && newRecipe) {
-            updateRecipe(currentRecipeId, newName, newRecipe);
+        setupEventListeners() {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.setupModalEventListeners();
+                this.setupDeleteConfirmationListener();
+            });
         }
-    }
 
-    // Update Recipe Function
-    async function updateRecipe(id, name, recipe) {
-        try {
-            const response = await fetch(`/api/recipe/${id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ name: name, recipe: recipe })
+        setupModalEventListeners() {
+            // Add modal cleanup
+            this.addModalCleanupListener('addRecipeModal', {
+                nameInput: 'modalRecipeNameInput',
+                contentInput: 'modalRecipeContentInput',
+                errorContainer: '#addRecipeModal'
             });
 
-            if (response.ok) {
-                alert("Recipe updated successfully!");
-                // Refresh the page to update the dropdown
-                location.reload();
-            } else {
-                const error = await response.text();
-                alert("Error updating recipe: " + error);
-            }
-        } catch (error) {
-            console.error("Error updating recipe:", error);
-            alert("Error updating recipe. Please try again.");
-        }
-    }
-
-    // Delete Recipe Function
-    function deleteRecipe() {
-        if (!currentRecipeId) return;
-        
-        // Get the recipe name to show in confirmation
-        const recipeName = document.getElementById("recipeName").textContent;
-        document.getElementById("recipeToDeleteName").textContent = recipeName;
-        
-        // Show Bootstrap confirmation modal
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
-        deleteModal.show();
-    }
-
-    // Delete Recipe by ID
-    async function deleteRecipeById(id) {
-        const deleteBtn = document.getElementById('confirmDeleteBtn');
-        const deleteSpinner = document.getElementById('deleteSpinner');
-        const deleteButtonText = document.getElementById('deleteButtonText');
-        
-        // Show loading state
-        deleteSpinner.classList.remove('d-none');
-        deleteButtonText.textContent = 'Deleting...';
-        deleteBtn.disabled = true;
-
-        try {
-            const response = await fetch(`/api/recipe/${id}`, {
-                method: "DELETE"
+            // Edit modal cleanup
+            this.addModalCleanupListener('editRecipeModal', {
+                nameInput: 'editRecipeNameInput',
+                contentInput: 'editRecipeContentInput',
+                errorContainer: '#editRecipeModal'
             });
+        }
 
-            if (response.ok) {
-                // Close the confirmation modal
-                const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal'));
-                deleteModal.hide();
-                
-                // Show success toast
-                showSuccessToast("Recipe deleted successfully!");
-                
-                // Remove recipe from dropdown
-                const dropdown = document.getElementById('recipeDropdown');
-                const optionToRemove = dropdown.querySelector(`option[value="${id}"]`);
-                if (optionToRemove) {
-                    optionToRemove.remove();
+        addModalCleanupListener(modalId, fields) {
+            document.getElementById(modalId).addEventListener('hidden.bs.modal', () => {
+                document.getElementById(fields.nameInput).value = '';
+                document.getElementById(fields.contentInput).value = '';
+                this.clearValidationErrors(fields.errorContainer);
+            });
+        }
+
+        setupDeleteConfirmationListener() {
+            document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+                if (this.currentRecipeId) {
+                    this.deleteRecipeById(this.currentRecipeId);
                 }
-                
-                // Hide recipe display
-                document.getElementById("recipeDisplay").style.display = "none";
-                currentRecipeId = null;
-            } else {
-                showErrorToast("Error deleting recipe. Please try again.");
-            }
-        } catch (error) {
-            console.error("Error deleting recipe:", error);
-            showErrorToast("Error deleting recipe. Please try again.");
-        } finally {
-            // Restore button state
-            deleteSpinner.classList.add('d-none');
-            deleteButtonText.textContent = 'Delete Recipe';
-            deleteBtn.disabled = false;
-        }
-    }
-
-    // Modal Form Handling
-    function submitModalForm() {
-        clearModalErrors();
-        
-        const name = document.getElementById("modalRecipeNameInput").value.trim();
-        const recipe = document.getElementById("modalRecipeContentInput").value.trim();
-        
-        // Validation
-        let hasErrors = false;
-        
-        if (!name) {
-            showModalError("modalRecipeNameInput", "modalNameError", "Recipe name is required");
-            hasErrors = true;
-        }
-        
-        if (!recipe) {
-            showModalError("modalRecipeContentInput", "modalContentError", "Recipe instructions are required");
-            hasErrors = true;
-        }
-        
-        if (hasErrors) return;
-
-        // Show loading state
-        const submitBtn = document.querySelector('#addRecipeModal .btn-primary');
-        const spinner = document.getElementById('modalSpinner');
-        const buttonText = document.getElementById('modalButtonText');
-        
-        spinner.classList.remove('d-none');
-        buttonText.textContent = 'Adding...';
-        submitBtn.disabled = true;
-
-        // Submit the form
-        addRecipeViaModal(name, recipe, submitBtn, spinner, buttonText);
-    }
-
-    async function addRecipeViaModal(name, recipe, submitBtn, spinner, buttonText) {
-        try {
-            const response = await fetch("/api/recipe", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ name: name, recipe: recipe })
             });
+        }
 
+        // =============================================================================
+        // RECIPE SELECTION
+        // =============================================================================
+        
+        async handleRecipeSelection() {
+            const dropdown = document.getElementById("recipeDropdown");
+            const selectedRecipeId = dropdown.options[dropdown.selectedIndex].value;
+            const recipeDisplay = document.getElementById("recipeDisplay");
+
+            if (!selectedRecipeId) {
+                this.hideRecipeDisplay();
+                return;
+            }
+
+            try {
+                const recipe = await this.fetchRecipe(selectedRecipeId);
+                this.displayRecipe(recipe);
+                this.currentRecipeId = recipe.id;
+            } catch (error) {
+                console.error('Error fetching recipe:', error);
+                this.hideRecipeDisplay();
+            }
+        }
+
+        async fetchRecipe(id) {
+            const response = await fetch(`${this.apiBaseUrl}/${id}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch recipe');
+            }
+            return await response.json();
+        }
+
+        displayRecipe(recipe) {
+            document.getElementById("recipeName").textContent = recipe.name;
+            document.getElementById("recipeContent").textContent = recipe.recipe;
+            document.getElementById("recipeDisplay").style.display = "block";
+        }
+
+        hideRecipeDisplay() {
+            document.getElementById("recipeDisplay").style.display = "none";
+            this.currentRecipeId = null;
+        }
+
+        // =============================================================================
+        // RECIPE CRUD OPERATIONS
+        // =============================================================================
+        
+        async createRecipe(name, recipe) {
+            const response = await this.makeApiCall('POST', '', { name, recipe });
             if (response.ok) {
                 const newRecipe = await response.json();
-                
-                // Show success message
-                showModalSuccess(`Recipe "${newRecipe.name}" added successfully!`);
-                
-                // Clear form
-                document.getElementById("modalRecipeNameInput").value = "";
-                document.getElementById("modalRecipeContentInput").value = "";
-                
-                setTimeout(() => {
-                    // Close modal after a short delay
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('addRecipeModal'));
-                    modal.hide();
-                        
-                    // Add new recipe to the dropdown list
-                    var dropdown = document.getElementById("recipeDropdown");
-                    var option = document.createElement("option");
-                    option.value = newRecipe.id;
-                    option.text = newRecipe.name;
-                    dropdown.appendChild(option);
-                }, 1000)
+                this.showSuccessToast(`Recipe "${newRecipe.name}" added successfully!`);
+                this.addRecipeToDropdown(newRecipe);
+                return newRecipe;
             } else {
                 const error = await response.text();
-                showModalError("modalRecipeNameInput", "modalNameError", "Error: " + error);
+                throw new Error(error);
             }
-        } catch (error) {
-            console.error("Error adding recipe:", error);
-            showModalError("modalRecipeNameInput", "modalNameError", "Error adding recipe. Please try again.");
-        } finally {
-            // Restore button state
-            spinner.classList.add('d-none');
-            buttonText.textContent = 'Add Recipe';
-            submitBtn.disabled = false;
+        }
+
+        async updateRecipe(id, name, recipe) {
+            const response = await this.makeApiCall('PUT', `/${id}`, { name, recipe });
+            if (response.ok) {
+                this.showSuccessToast("Recipe updated successfully!");
+                this.updateRecipeInUI(id, name, recipe);
+                return true;
+            } else {
+                const error = await response.text();
+                throw new Error(error);
+            }
+        }
+
+        async deleteRecipe(id) {
+            const response = await this.makeApiCall('DELETE', `/${id}`);
+            if (response.ok) {
+                this.showSuccessToast("Recipe deleted successfully!");
+                this.removeRecipeFromUI(id);
+                return true;
+            } else {
+                throw new Error('Failed to delete recipe');
+            }
+        }
+
+        async makeApiCall(method, endpoint, data = null) {
+            const config = {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            
+            if (data) {
+                config.body = JSON.stringify(data);
+            }
+            
+            return await fetch(`${this.apiBaseUrl}${endpoint}`, config);
+        }
+
+        // =============================================================================
+        // UI UPDATES
+        // =============================================================================
+        
+        addRecipeToDropdown(recipe) {
+            const dropdown = document.getElementById('recipeDropdown');
+            const option = document.createElement('option');
+            option.value = recipe.id;
+            option.textContent = recipe.name;
+            dropdown.appendChild(option);
+        }
+
+        updateRecipeInUI(id, name, recipe) {
+            // Update displayed recipe
+            document.getElementById("recipeName").textContent = name;
+            document.getElementById("recipeContent").textContent = recipe;
+            
+            // Update dropdown option
+            const dropdown = document.getElementById('recipeDropdown');
+            const option = dropdown.querySelector(`option[value="${id}"]`);
+            if (option) {
+                option.textContent = name;
+            }
+        }
+
+        removeRecipeFromUI(id) {
+            // Remove from dropdown
+            const dropdown = document.getElementById('recipeDropdown');
+            const option = dropdown.querySelector(`option[value="${id}"]`);
+            if (option) {
+                option.remove();
+            }
+            
+            // Hide recipe display
+            this.hideRecipeDisplay();
+        }
+
+        // =============================================================================
+        // MODAL OPERATIONS
+        // =============================================================================
+        
+        openAddModal() {
+            const modal = new bootstrap.Modal(document.getElementById('addRecipeModal'));
+            modal.show();
+        }
+
+        openEditModal() {
+            if (!this.currentRecipeId) return;
+            
+            const currentName = document.getElementById("recipeName").textContent;
+            const currentRecipe = document.getElementById("recipeContent").textContent;
+            
+            document.getElementById("editRecipeNameInput").value = currentName;
+            document.getElementById("editRecipeContentInput").value = currentRecipe;
+            this.clearValidationErrors('#editRecipeModal');
+            
+            const modal = new bootstrap.Modal(document.getElementById('editRecipeModal'));
+            modal.show();
+        }
+
+        openDeleteModal() {
+            if (!this.currentRecipeId) return;
+            
+            const recipeName = document.getElementById("recipeName").textContent;
+            document.getElementById("recipeToDeleteName").textContent = recipeName;
+            
+            const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            modal.show();
+        }
+
+        // =============================================================================
+        // FORM SUBMISSIONS
+        // =============================================================================
+        
+        async submitAddForm() {
+            const formData = this.getFormData('addRecipeModal', {
+                name: 'modalRecipeNameInput',
+                content: 'modalRecipeContentInput'
+            });
+
+            if (!this.validateFormData(formData, 'addRecipeModal')) {
+                return;
+            }
+
+            const buttonConfig = this.getButtonConfig('addRecipeModal');
+            this.setLoadingState(buttonConfig, true, 'Adding...');
+
+            try {
+                await this.createRecipe(formData.name, formData.content);
+                this.clearForm('addRecipeModal', {
+                    name: 'modalRecipeNameInput',
+                    content: 'modalRecipeContentInput'
+                });
+                this.closeModal('addRecipeModal');
+            } catch (error) {
+                this.showFormError('addRecipeModal', 'modalNameError', error.message);
+            } finally {
+                this.setLoadingState(buttonConfig, false, 'Add Recipe');
+            }
+        }
+
+        async submitEditForm() {
+            const formData = this.getFormData('editRecipeModal', {
+                name: 'editRecipeNameInput',
+                content: 'editRecipeContentInput'
+            });
+
+            if (!this.validateFormData(formData, 'editRecipeModal')) {
+                return;
+            }
+
+            const buttonConfig = this.getButtonConfig('editRecipeModal');
+            this.setLoadingState(buttonConfig, true, 'Updating...');
+
+            try {
+                await this.updateRecipe(this.currentRecipeId, formData.name, formData.content);
+                this.closeModal('editRecipeModal');
+            } catch (error) {
+                this.showFormError('editRecipeModal', 'editNameError', error.message);
+            } finally {
+                this.setLoadingState(buttonConfig, false, 'Update Recipe');
+            }
+        }
+
+        async submitDeleteForm() {
+            const buttonConfig = this.getButtonConfig('deleteConfirmModal');
+            this.setLoadingState(buttonConfig, true, 'Deleting...');
+
+            try {
+                await this.deleteRecipe(this.currentRecipeId);
+                this.closeModal('deleteConfirmModal');
+            } catch (error) {
+                this.showErrorToast(error.message);
+            } finally {
+                this.setLoadingState(buttonConfig, false, 'Delete Recipe');
+            }
+        }
+
+        // =============================================================================
+        // FORM UTILITIES
+        // =============================================================================
+        
+        getFormData(modalId, fieldMap) {
+            return {
+                name: document.getElementById(fieldMap.name).value.trim(),
+                content: document.getElementById(fieldMap.content).value.trim()
+            };
+        }
+
+        validateFormData(formData, modalId) {
+            this.clearValidationErrors(`#${modalId}`);
+            let hasErrors = false;
+
+            if (!formData.name) {
+                this.showFieldError(modalId, 'name', 'Recipe name is required');
+                hasErrors = true;
+            }
+
+            if (!formData.content) {
+                this.showFieldError(modalId, 'content', 'Recipe instructions are required');
+                hasErrors = true;
+            }
+
+            return !hasErrors;
+        }
+
+        showFieldError(modalId, fieldType, message) {
+            const fieldMap = {
+                'addRecipeModal': { name: 'modalNameError', content: 'modalContentError' },
+                'editRecipeModal': { name: 'editNameError', content: 'editContentError' }
+            };
+            
+            const inputMap = {
+                'addRecipeModal': { name: 'modalRecipeNameInput', content: 'modalRecipeContentInput' },
+                'editRecipeModal': { name: 'editRecipeNameInput', content: 'editRecipeContentInput' }
+            };
+
+            const errorId = fieldMap[modalId][fieldType];
+            const inputId = inputMap[modalId][fieldType];
+            
+            this.showFormError(modalId, errorId, message);
+            document.getElementById(inputId).classList.add('is-invalid');
+        }
+
+        showFormError(modalId, errorId, message) {
+            const errorElement = document.getElementById(errorId);
+            if (errorElement) {
+                errorElement.textContent = message;
+            }
+        }
+
+        clearValidationErrors(container) {
+            const containerElement = typeof container === 'string' ? document.querySelector(container) : container;
+            containerElement.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            containerElement.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+        }
+
+        clearForm(modalId, fieldMap) {
+            document.getElementById(fieldMap.name).value = '';
+            document.getElementById(fieldMap.content).value = '';
+        }
+
+        getButtonConfig(modalId) {
+            const buttonMap = {
+                'addRecipeModal': { btn: '.btn-primary', spinner: 'modalSpinner', text: 'modalButtonText' },
+                'editRecipeModal': { btn: '.btn-primary', spinner: 'editSpinner', text: 'editButtonText' },
+                'deleteConfirmModal': { btn: '#confirmDeleteBtn', spinner: 'deleteSpinner', text: 'deleteButtonText' }
+            };
+
+            const config = buttonMap[modalId];
+            return {
+                button: document.querySelector(`#${modalId} ${config.btn}`),
+                spinner: document.getElementById(config.spinner),
+                text: document.getElementById(config.text)
+            };
+        }
+
+        setLoadingState(buttonConfig, isLoading, text) {
+            if (isLoading) {
+                buttonConfig.spinner.classList.remove('d-none');
+                buttonConfig.text.textContent = text;
+                buttonConfig.button.disabled = true;
+            } else {
+                buttonConfig.spinner.classList.add('d-none');
+                buttonConfig.text.textContent = text;
+                buttonConfig.button.disabled = false;
+            }
+        }
+
+        closeModal(modalId) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) {
+                modal.hide();
+            }
+        }
+
+        // =============================================================================
+        // NOTIFICATIONS
+        // =============================================================================
+        
+        showSuccessToast(message) {
+            this.showToast('successToast', 'successToastBody', message);
+        }
+
+        showErrorToast(message) {
+            this.showToast('errorToast', 'errorToastBody', message);
+        }
+
+        showToast(toastId, bodyId, message) {
+            const toastBody = document.getElementById(bodyId);
+            toastBody.textContent = message;
+            const toast = new bootstrap.Toast(document.getElementById(toastId));
+            toast.show();
         }
     }
 
-    function showModalError(inputId, errorId, message) {
-        const input = document.getElementById(inputId);
-        const errorDiv = document.getElementById(errorId);
-        
-        input.classList.add('is-invalid');
-        errorDiv.textContent = message;
+    // =============================================================================
+    // GLOBAL INSTANCE AND PUBLIC FUNCTIONS
+    // =============================================================================
+    
+    const recipeManager = new RecipeManager();
+
+    // Public functions for HTML onclick handlers
+    function handleRecipeSelection() {
+        recipeManager.handleRecipeSelection();
     }
 
-    function clearModalErrors() {
-        document.querySelectorAll('#addRecipeModal .is-invalid').forEach(el => el.classList.remove('is-invalid'));
-        document.querySelectorAll('#addRecipeModal .invalid-feedback').forEach(el => el.textContent = '');
+    function editRecipe() {
+        recipeManager.openEditModal();
     }
 
-    function showModalSuccess(message) {
-        const modalBody = document.querySelector('#addRecipeModal .modal-body');
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-success alert-dismissible fade show';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        modalBody.insertBefore(alertDiv, modalBody.firstChild);
-        
-        // Auto-dismiss after 3 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
-            }
-        }, 3000);
+    function deleteRecipe() {
+        recipeManager.openDeleteModal();
     }
 
-    // Toast Functions
-    function showSuccessToast(message) {
-        const toastBody = document.getElementById('successToastBody');
-        toastBody.textContent = message;
-        const toast = new bootstrap.Toast(document.getElementById('successToast'));
-        toast.show();
+    function submitModalForm() {
+        recipeManager.submitAddForm();
     }
 
-    function showErrorToast(message) {
-        const toastBody = document.getElementById('errorToastBody');
-        toastBody.textContent = message;
-        const toast = new bootstrap.Toast(document.getElementById('errorToast'));
-        toast.show();
+    function submitEditModalForm() {
+        recipeManager.submitEditForm();
     }
-
-    // Event Listeners
-    document.addEventListener('DOMContentLoaded', function() {
-        // Clear modal form when modal is closed
-        document.getElementById('addRecipeModal').addEventListener('hidden.bs.modal', function () {
-            document.getElementById("modalRecipeNameInput").value = "";
-            document.getElementById("modalRecipeContentInput").value = "";
-            clearModalErrors();
-        });
-
-        // Delete confirmation button event listener
-        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-            if (currentRecipeId) {
-                deleteRecipeById(currentRecipeId);
-            }
-        });
-    });
 </script>
