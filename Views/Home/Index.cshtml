@@ -246,14 +246,18 @@
                 document.getElementById("modalRecipeNameInput").value = "";
                 document.getElementById("modalRecipeContentInput").value = "";
                 
-                // Close modal after a short delay
                 setTimeout(() => {
+                    // Close modal after a short delay
                     const modal = bootstrap.Modal.getInstance(document.getElementById('addRecipeModal'));
                     modal.hide();
-                    
-                    // Refresh the page to update the dropdown
-                    location.reload();
-                }, 1500);
+                        
+                    // Add new recipe to the dropdown list
+                    var dropdown = document.getElementById("recipeDropdown");
+                    var option = document.createElement("option");
+                    option.value = newRecipe.id;
+                    option.text = newRecipe.name;
+                    dropdown.appendChild(option);
+                }, 1000)
             } else {
                 const error = await response.text();
                 showModalError("modalRecipeNameInput", "modalNameError", "Error: " + error);
