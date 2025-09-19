@@ -3,10 +3,14 @@ using MyRecipes.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });;
 
 // Register the recipe service
-builder.Services.AddScoped<IRecipeService, RecipeService>();
+builder.Services.AddSingleton<IRecipeService, RecipeService>();
 
 var app = builder.Build();
 

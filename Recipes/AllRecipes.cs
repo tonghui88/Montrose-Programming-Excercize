@@ -1,4 +1,7 @@
-﻿namespace MyRecipes.Recipes
+﻿// NOTE: This file is kept only because the client provided it.
+// The active in-memory store is implemented in Services/RecipeService.cs.
+
+namespace MyRecipes.Recipes
 {
     public static class AllRecipes
     {
