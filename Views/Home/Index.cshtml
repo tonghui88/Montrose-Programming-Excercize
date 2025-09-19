@@ -44,25 +44,43 @@
         </div>
     </div>
 
-    <!-- Add Recipe Form -->
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title mb-0">Add New Recipe</h4>
+    <!-- Add Recipe Button -->
+    <div class="row justify-content-center mt-4">
+        <div class="col-md-6 text-center">
+            <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#addRecipeModal">
+                <i class="bi bi-plus-circle"></i> Add New Recipe
+            </button>
+        </div>
+    </div>
+
+    <!-- Add Recipe Modal -->
+    <div class="modal fade" id="addRecipeModal" tabindex="-1" aria-labelledby="addRecipeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addRecipeModalLabel">Add New Recipe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="card-body">
-                    <form id="addRecipeForm">
+                <div class="modal-body">
+                    <form id="addRecipeModalForm">
                         <div class="mb-3">
-                            <label for="recipeNameInput" class="form-label">Recipe Name</label>
-                            <input type="text" class="form-control" id="recipeNameInput" required>
+                            <label for="modalRecipeNameInput" class="form-label">Recipe Name *</label>
+                            <input type="text" class="form-control" id="modalRecipeNameInput" required>
+                            <div class="invalid-feedback" id="modalNameError"></div>
                         </div>
                         <div class="mb-3">
-                            <label for="recipeContentInput" class="form-label">Recipe Instructions</label>
-                            <textarea class="form-control" id="recipeContentInput" rows="4" required></textarea>
+                            <label for="modalRecipeContentInput" class="form-label">Recipe Instructions *</label>
+                            <textarea class="form-control" id="modalRecipeContentInput" rows="4" required></textarea>
+                            <div class="invalid-feedback" id="modalContentError"></div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Add Recipe</button>
                     </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitModalForm()">
+                        <span class="spinner-border spinner-border-sm d-none" id="modalSpinner"></span>
+                        <span id="modalButtonText">Add Recipe</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -106,46 +124,6 @@
         }
     }
 
-    // Add Recipe Form Handler
-    document.getElementById("addRecipeForm").addEventListener("submit", async function(e) {
-        e.preventDefault();
-        
-        const name = document.getElementById("recipeNameInput").value.trim();
-        const recipe = document.getElementById("recipeContentInput").value.trim();
-        
-        if (!name || !recipe) {
-            alert("Please fill in all fields");
-            return;
-        }
-
-        try {
-            const response = await fetch("/api/recipe", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ name: name, recipe: recipe })
-            });
-
-            if (response.ok) {
-                const newRecipe = await response.json();
-                alert("Recipe added successfully!");
-                
-                // Clear form
-                document.getElementById("recipeNameInput").value = "";
-                document.getElementById("recipeContentInput").value = "";
-                
-                // Refresh the dropdown
-                location.reload();
-            } else {
-                const error = await response.text();
-                alert("Error adding recipe: " + error);
-            }
-        } catch (error) {
-            console.error("Error adding recipe:", error);
-            alert("Error adding recipe. Please try again.");
-        }
-    });
 
     // Edit Recipe Function
     function editRecipe() {
@@ -212,4 +190,121 @@
             alert("Error deleting recipe. Please try again.");
         }
     }
+
+    // Modal Form Handling
+    function submitModalForm() {
+        clearModalErrors();
+        
+        const name = document.getElementById("modalRecipeNameInput").value.trim();
+        const recipe = document.getElementById("modalRecipeContentInput").value.trim();
+        
+        // Validation
+        let hasErrors = false;
+        
+        if (!name) {
+            showModalError("modalRecipeNameInput", "modalNameError", "Recipe name is required");
+            hasErrors = true;
+        }
+        
+        if (!recipe) {
+            showModalError("modalRecipeContentInput", "modalContentError", "Recipe instructions are required");
+            hasErrors = true;
+        }
+        
+        if (hasErrors) return;
+
+        // Show loading state
+        const submitBtn = document.querySelector('#addRecipeModal .btn-primary');
+        const spinner = document.getElementById('modalSpinner');
+        const buttonText = document.getElementById('modalButtonText');
+        
+        spinner.classList.remove('d-none');
+        buttonText.textContent = 'Adding...';
+        submitBtn.disabled = true;
+
+        // Submit the form
+        addRecipeViaModal(name, recipe, submitBtn, spinner, buttonText);
+    }
+
+    async function addRecipeViaModal(name, recipe, submitBtn, spinner, buttonText) {
+        try {
+            const response = await fetch("/api/recipe", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ name: name, recipe: recipe })
+            });
+
+            if (response.ok) {
+                const newRecipe = await response.json();
+                
+                // Show success message
+                showModalSuccess(`Recipe "${newRecipe.name}" added successfully!`);
+                
+                // Clear form
+                document.getElementById("modalRecipeNameInput").value = "";
+                document.getElementById("modalRecipeContentInput").value = "";
+                
+                // Close modal after a short delay
+                setTimeout(() => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addRecipeModal'));
+                    modal.hide();
+                    
+                    // Refresh the page to update the dropdown
+                    location.reload();
+                }, 1500);
+            } else {
+                const error = await response.text();
+                showModalError("modalRecipeNameInput", "modalNameError", "Error: " + error);
+            }
+        } catch (error) {
+            console.error("Error adding recipe:", error);
+            showModalError("modalRecipeNameInput", "modalNameError", "Error adding recipe. Please try again.");
+        } finally {
+            // Restore button state
+            spinner.classList.add('d-none');
+            buttonText.textContent = 'Add Recipe';
+            submitBtn.disabled = false;
+        }
+    }
+
+    function showModalError(inputId, errorId, message) {
+        const input = document.getElementById(inputId);
+        const errorDiv = document.getElementById(errorId);
+        
+        input.classList.add('is-invalid');
+        errorDiv.textContent = message;
+    }
+
+    function clearModalErrors() {
+        document.querySelectorAll('#addRecipeModal .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        document.querySelectorAll('#addRecipeModal .invalid-feedback').forEach(el => el.textContent = '');
+    }
+
+    function showModalSuccess(message) {
+        const modalBody = document.querySelector('#addRecipeModal .modal-body');
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        modalBody.insertBefore(alertDiv, modalBody.firstChild);
+        
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 3000);
+    }
+
+    // Clear modal form when modal is closed
+    document.getElementById('addRecipeModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById("modalRecipeNameInput").value = "";
+        document.getElementById("modalRecipeContentInput").value = "";
+        clearModalErrors();
+    });
 </script>
