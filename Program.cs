@@ -7,7 +7,7 @@ builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-    });;
+    });
 
 // Register the recipe service
 builder.Services.AddSingleton<IRecipeService, RecipeService>();
