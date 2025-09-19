@@ -1,7 +1,12 @@
+using MyRecipes.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Register the recipe service
+builder.Services.AddScoped<IRecipeService, RecipeService>();
 
 var app = builder.Build();
 
