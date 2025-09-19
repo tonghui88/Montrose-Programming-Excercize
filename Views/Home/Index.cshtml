@@ -195,8 +195,8 @@
     function submitModalForm() {
         clearModalErrors();
         
-        const name = $("#modalRecipeNameInput").val().trim();
-        const recipe = $("#modalRecipeContentInput").val().trim();
+        const name = document.getElementById("modalRecipeNameInput").value.trim();
+        const recipe = document.getElementById("modalRecipeContentInput").value.trim();
         
         // Validation
         let hasErrors = false;
@@ -214,19 +214,19 @@
         if (hasErrors) return;
 
         // Show loading state
-        const $submitBtn = $('#addRecipeModal .btn-primary');
-        const $spinner = $('#modalSpinner');
-        const $buttonText = $('#modalButtonText');
+        const submitBtn = document.querySelector('#addRecipeModal .btn-primary');
+        const spinner = document.getElementById('modalSpinner');
+        const buttonText = document.getElementById('modalButtonText');
         
-        $spinner.removeClass('d-none');
-        $buttonText.text('Adding...');
-        $submitBtn.prop('disabled', true);
+        spinner.classList.remove('d-none');
+        buttonText.textContent = 'Adding...';
+        submitBtn.disabled = true;
 
         // Submit the form
-        addRecipeViaModal(name, recipe, $submitBtn, $spinner, $buttonText);
+        addRecipeViaModal(name, recipe, submitBtn, spinner, buttonText);
     }
 
-    async function addRecipeViaModal(name, recipe, $submitBtn, $spinner, $buttonText) {
+    async function addRecipeViaModal(name, recipe, submitBtn, spinner, buttonText) {
         try {
             const response = await fetch("/api/recipe", {
                 method: "POST",
@@ -243,16 +243,17 @@
                 showModalSuccess(`Recipe "${newRecipe.name}" added successfully!`);
                 
                 // Clear form
-                $("#modalRecipeNameInput").val("");
-                $("#modalRecipeContentInput").val("");
+                document.getElementById("modalRecipeNameInput").value = "";
+                document.getElementById("modalRecipeContentInput").value = "";
                 
-                // Close modal
-                const modal = bootstrap.Modal.getInstance($('#addRecipeModal')[0]);
-                modal.hide();
-                
-                // Add Recipe List
-                const $dropdown = $('#recipeDropdown');
-                $dropdown.append(`<option value="${newRecipe.id}">${newRecipe.name}</option>`);
+                // Close modal after a short delay
+                setTimeout(() => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addRecipeModal'));
+                    modal.hide();
+                    
+                    // Refresh the page to update the dropdown
+                    location.reload();
+                }, 1500);
             } else {
                 const error = await response.text();
                 showModalError("modalRecipeNameInput", "modalNameError", "Error: " + error);
@@ -262,9 +263,9 @@
             showModalError("modalRecipeNameInput", "modalNameError", "Error adding recipe. Please try again.");
         } finally {
             // Restore button state
-            $spinner.addClass('d-none');
-            $buttonText.text('Add Recipe');
-            $submitBtn.prop('disabled', false);
+            spinner.classList.add('d-none');
+            buttonText.textContent = 'Add Recipe';
+            submitBtn.disabled = false;
         }
     }
 
@@ -301,9 +302,9 @@
     }
 
     // Clear modal form when modal is closed
-    $('#addRecipeModal').on('hidden.bs.modal', function () {
-        $("#modalRecipeNameInput").val("");
-        $("#modalRecipeContentInput").val("");
+    document.getElementById('addRecipeModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById("modalRecipeNameInput").value = "";
+        document.getElementById("modalRecipeContentInput").value = "";
         clearModalErrors();
     });
 </script>
